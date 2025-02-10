@@ -19,9 +19,12 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SUI_DECIMALS } from "@mysten/sui/utils";
 
 import suilendsdk from '@suilend/sdk';
-console.log(suilendsdk);
-//const { initializeSuilend, initializeSuilendRewards, initializeObligations } = suilendsdk;
-const { initializeSuilend, initializeSuilendRewards, createObligationIfNoneExists, sendObligationToUser } = suilendsdk;
+const {
+    initializeSuilend,
+    initializeSuilendRewards,
+    createObligationIfNoneExists,
+    sendObligationToUser
+} = suilendsdk;
 
 import {
   LENDING_MARKET_ID,
@@ -61,40 +64,40 @@ Given the recent messages, extract the following information about the requested
 Respond with a JSON markdown block containing only the extracted values.`;
 
 const initializeObligations = async (
-  suiClient: SuiClient,
-  suilendClient: SuilendClient,
-  refreshedRawReserves: Reserve<string>[],
-  reserveMap: Record<string, ParsedReserve>,
-  address?: string,
+    suiClient: SuiClient,
+    suilendClient: SuilendClient,
+    refreshedRawReserves: Reserve<string>[],
+    reserveMap: Record<string, ParsedReserve>,
+    address?: string,
 ) => {
-  if (!address) return { obligationOwnerCaps: [], obligations: [] };
+    if (!address) return { obligationOwnerCaps: [], obligations: [] };
 
-  const obligationOwnerCaps = await SuilendClient.getObligationOwnerCaps(
-    address,
-    suilendClient.lendingMarket.$typeArgs,
-    suiClient,
-  );
+    const obligationOwnerCaps = await SuilendClient.getObligationOwnerCaps(
+        address,
+        suilendClient.lendingMarket.$typeArgs,
+        suiClient,
+    );
 
-  const obligations = (
-    await Promise.all(
-      obligationOwnerCaps.map((ownerCap) =>
-        SuilendClient.getObligation(
-					ownerCap.obligationId,
-          suilendClient.lendingMarket.$typeArgs,
-          suiClient,
-				),
-			),
+    const obligations = (
+        await Promise.all(
+            obligationOwnerCaps.map((ownerCap) =>
+                SuilendClient.getObligation(
+                    ownerCap.obligationId,
+                    suilendClient.lendingMarket.$typeArgs,
+                    suiClient,
+                ),
+            ),
+        )
     )
-  )
-	.map((rawObligation) =>
-		simulate.refreshObligation(rawObligation, refreshedRawReserves),
-	)
-	.map((refreshedObligation) =>
-		parseObligation(refreshedObligation, reserveMap),
-	)
-	.sort((a, b) => +b.netValueUsd.minus(a.netValueUsd));
+    .map((rawObligation) =>
+        simulate.refreshObligation(rawObligation, refreshedRawReserves),
+    )
+    .map((refreshedObligation) =>
+        parseObligation(refreshedObligation, reserveMap),
+    )
+    .sort((a, b) => +b.netValueUsd.minus(a.netValueUsd));
 
-  return { obligationOwnerCaps, obligations };
+    return { obligationOwnerCaps, obligations };
 };
 
 export default {
@@ -189,90 +192,62 @@ export default {
             console.log(
                 `Depositring: ${depositContent.amount} tokens (${adjustedAmount} base units)`
             );
-            // TODO change the logic to Suilend
             const tx = new Transaction();
-						const suiService = runtime.getService<SuiService>(
-								ServiceType.TRANSCRIPTION
-						);
-						const address = suiService.getAddress();
-						const suilendClient = await SuilendClient.initialize(
-							LENDING_MARKET_ID,
-							LENDING_MARKET_TYPE,
-							suiClient,
-						);
-						const {
-							lendingMarket,
-							coinMetadataMap,
+            const suiService = runtime.getService<SuiService>(
+                    ServiceType.TRANSCRIPTION
+            );
+            const address = suiService.getAddress();
+            const suilendClient = await SuilendClient.initialize(
+                LENDING_MARKET_ID,
+                LENDING_MARKET_TYPE,
+                suiClient,
+            );
+            const {
+                lendingMarket,
+                coinMetadataMap,
 
-							reserveMap,
-							refreshedRawReserves,
-							reserveCoinTypes,
-							reserveCoinMetadataMap,
+                reserveMap,
+                refreshedRawReserves,
+                reserveCoinTypes,
+                reserveCoinMetadataMap,
 
-							rewardCoinTypes,
-							activeRewardCoinTypes,
-							rewardCoinMetadataMap,
-						} = await initializeSuilend(suiClient, suilendClient);
-//						console.log(lendingMarket.reserves);
-/*						const { obligationOwnerCaps, obligations } = await initializeObligations(
-							suiClient,
-							suilendClient,
-							refreshedRawReserves,
-							reserveMap,
-							address,
-						);
-*/
-						const coinType = "0x2::sui::SUI";
-						const obligationOwnerCaps = await SuilendClient.getObligationOwnerCaps(
-							address,
-							suilendClient.lendingMarket.$typeArgs,
-							suiClient,
-						);
-console.log("obligationOwnerCaps", obligationOwnerCaps);
-/*
-						const obligationOwnerCap = obligationOwnerCaps.find(
-							(cap) => cap.obligationId === obligation?.id
-						);
-*/
-						const obligationOwnerCap = obligationOwnerCaps.length > 0 ? obligationOwnerCaps[0] : undefined;
-console.log("obligationOwnerCap", obligationOwnerCap);
+                rewardCoinTypes,
+                activeRewardCoinTypes,
+                rewardCoinMetadataMap,
+            } = await initializeSuilend(suiClient, suilendClient);
+            const coinType = "0x2::sui::SUI";
+            const obligationOwnerCaps = await SuilendClient.getObligationOwnerCaps(
+                address,
+                suilendClient.lendingMarket.$typeArgs,
+                suiClient,
+            );
+            const obligationOwnerCap =
+                obligationOwnerCaps.length > 0 ? obligationOwnerCaps[0] : undefined;
 
-						try {
-							const { obligationOwnerCapId, didCreate } =
-								createObligationIfNoneExists(
-									suilendClient,
-									tx,
-									obligationOwnerCap,
-								);
-console.log("obligationOwnerCapId", obligationOwnerCapId);
-console.log("didCreate", didCreate);
-							await suilendClient.depositIntoObligation(
-								address,
-								coinType,
-								adjustedAmount,
-								tx,
-								obligationOwnerCapId,
-							);
-							if (didCreate)
-								sendObligationToUser(obligationOwnerCapId, address, tx);
-						} catch (err) {
-							console.error(err);
-							throw err;
-						}
-
-/*
-            const [coin] = tx.splitCoins(tx.gas, [adjustedAmount]);
-            tx.depositObjects([coin], depositContent.recipient);
-            const executedTransaction =
-                await suiClient.signAndExecuteTransaction({
+            try {
+                const { obligationOwnerCapId, didCreate } =
+                    createObligationIfNoneExists(
+                        suilendClient,
+                        tx,
+                        obligationOwnerCap,
+                    );
+                await suilendClient.depositIntoObligation(
+                    address,
+                    coinType,
+                    adjustedAmount,
+                    tx,
+                    obligationOwnerCapId,
+                );
+                if (didCreate)
+                    sendObligationToUser(obligationOwnerCapId, address, tx);
+            } catch (err) {
+                console.error(err);
+                throw err;
+            }
+            const executedTx = await suiClient.signAndExecuteTransaction({
                     signer: suiAccount,
                     transaction: tx,
-                });
-*/
-						const executedTx = await suiClient.signAndExecuteTransaction({
-								signer: suiAccount,
-								transaction: tx,
-						});
+            });
 
             console.log("Deposit successful:", executedTx.digest);
 
