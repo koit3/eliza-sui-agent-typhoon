@@ -61,6 +61,16 @@ User: "What's my wallet balance?";
 Assistant: "Your wallet contains 10.5 SUI ($42.00 USD)...";
 ```
 
+### Deposit SUI to Suilend
+
+Deposit SUI to Suilend:
+
+```typescript
+// Example conversation
+User: "Deposit 1 SUI to Suilend";
+Assistant: "Successfully depositred 1 SUI to Suilend...";
+```
+
 ## API Reference
 
 ### Actions
@@ -69,6 +79,7 @@ Assistant: "Your wallet contains 10.5 SUI ($42.00 USD)...";
 - `TRANSFER_TOKEN`: Alias for SEND_TOKEN
 - `SEND_SUI`: Alias for SEND_TOKEN
 - `PAY`: Alias for SEND_TOKEN
+- `DEPOSIT_TO_SUILEND`: Deposit to Suilend
 
 ### Providers
 
